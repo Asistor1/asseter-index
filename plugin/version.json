@@ -1,6 +1,6 @@
 {
   "version": "1.4.0",
-  "notes": "Year and Cost filters, one card per stone",
+  "notes": "Rocks: one card per stone + Shape filter. Coins: split by year and price, new Year and Cost filters",
   "files": {
     "ui.html": "https://raw.githubusercontent.com/Asistor1/asseter-index/main/plugin/ui.html",
     "code.js": "https://raw.githubusercontent.com/Asistor1/asseter-index/main/plugin/code.js"
