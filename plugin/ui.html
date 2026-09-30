@@ -1,0 +1,1626 @@
+<style>
+  :root {
+    --bg: var(--figma-color-bg, #2c2c2c);
+    --bg-2: var(--figma-color-bg-secondary, #383838);
+    --bg-3: var(--figma-color-bg-tertiary, #444);
+    --text: var(--figma-color-text, #fff);
+    --text-2: var(--figma-color-text-secondary, #aaa);
+    --accent: var(--figma-color-bg-brand, #0d99ff);
+    --accent-text: var(--figma-color-text-onbrand, #fff);
+    --border: var(--figma-color-border, #4a4a4a);
+    --danger: var(--figma-color-text-danger, #f24822);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font: 11px/1.4 Inter, 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .tabs { display: flex; border-bottom: 1px solid var(--border); flex: 0 0 auto; }
+  .tab {
+    padding: 10px 14px; cursor: pointer; color: var(--text-2);
+    border-bottom: 2px solid transparent; font-weight: 600;
+  }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  .panel { display: none; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .panel.active { display: flex; }
+
+  .searchbar { display: flex; gap: 8px; padding: 10px 12px; flex: 0 0 auto; }
+  .searchbar input {
+    flex: 1; padding: 7px 10px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg-2); color: var(--text);
+    font: inherit; outline: none;
+  }
+  .searchbar input:focus { border-color: var(--accent); }
+
+  /* Obverse/reverse is not a filter but a view mode: the two sides of one coin
+     are one asset, so the toggle sits next to the search, not in the chips. */
+  .sides {
+    display: flex; flex: 0 0 auto; align-items: stretch;
+    border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+  }
+  .sides.empty-list { display: none; }
+  .sides button {
+    padding: 0 8px; border: 0; background: transparent; color: var(--text-2);
+    font: inherit; cursor: pointer; white-space: nowrap;
+  }
+  .sides button + button { border-left: 1px solid var(--border); }
+  .sides button:hover:not(.active) { color: var(--text); }
+  .sides button.active {
+    background: var(--accent); color: var(--accent-text); font-weight: 600;
+  }
+
+  /* Sits above everything: a new build is worth one line, not a dialog. */
+  .update {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; background: var(--bg-3); border-bottom: 1px solid var(--border);
+  }
+  .update.empty-list { display: none; }
+  .update .what { flex: 1; color: var(--text); }
+  .update .what b { font-weight: 600; }
+  .update .note { color: var(--text-2); }
+  .update button { padding: 4px 10px; }
+  .update .later {
+    border: 0; background: transparent; color: var(--text-2); cursor: pointer; font: inherit;
+  }
+  .update .later:hover { color: var(--text); }
+
+  /* Global product filter — a tab row, like the plugin's own tabs. */
+  .products {
+    flex: 0 0 auto; display: flex; gap: 2px; overflow-x: auto;
+    padding: 0 8px; border-bottom: 1px solid var(--border);
+  }
+  .products::-webkit-scrollbar { height: 0; }
+  .ptab {
+    padding: 9px 10px; border: none; background: none; cursor: pointer;
+    color: var(--text-2); font: inherit; font-weight: 600; white-space: nowrap;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .ptab:hover:not(:disabled) { color: var(--text); }
+  .ptab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .ptab:disabled { opacity: .35; cursor: default; }
+  .ptab .n { opacity: .55; margin-left: 4px; font-weight: 400; }
+
+  /* Local filter row, under the search input. */
+  .cats {
+    flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 0 12px 8px; align-items: center;
+  }
+  .cats.empty-list { display: none; }
+  .chip {
+    padding: 5px 10px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--border); background: transparent; color: var(--text-2);
+    font: inherit; white-space: nowrap;
+  }
+  .chip:hover:not(:disabled) { color: var(--text); border-color: var(--text-2); }
+  .chip.active {
+    background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600;
+  }
+  .chip:disabled { opacity: .35; cursor: default; }
+  .chip .n { opacity: .7; margin-left: 3px; }
+  .chip.reset { border-style: dashed; }
+
+  /* A dimension with dozens of values (CoinIn has 35 countries) collapses into
+     a single control instead of flooding the row. */
+  /* The native chevron sits flush against the rounded edge, so draw our own
+     and give it room. */
+  .chip-select {
+    padding: 5px 26px 5px 10px; border-radius: 999px; cursor: pointer; max-width: 60%;
+    border: 1px solid var(--border); background: transparent; color: var(--text-2);
+    font: inherit; outline: none;
+    appearance: none; -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: calc(100% - 14px) calc(50% + 1px), calc(100% - 10px) calc(50% + 1px);
+    background-size: 4px 4px, 4px 4px;
+    background-repeat: no-repeat;
+  }
+  .chip-select:hover { color: var(--text); border-color: var(--text-2); }
+  .chip-select.filtered {
+    background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600;
+  }
+
+  .status { padding: 0 12px 6px; color: var(--text-2); flex: 0 0 auto; min-height: 16px; }
+  .status .warn { color: var(--danger); }
+  .status a { color: var(--accent); }
+
+  .grid {
+    flex: 1 1 auto; overflow-y: auto; padding: 4px 12px 12px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    gap: 8px; align-content: start; grid-auto-rows: min-content;
+  }
+  /* No overflow:hidden here — it would turn the card into a scroll container and
+     the grid row would stop reserving space for the label. The thumb clips itself. */
+  .card {
+    border: 1.5px solid var(--border); border-radius: 8px; background: var(--bg-2);
+    cursor: pointer; user-select: none; position: relative;
+  }
+  .card:hover { border-color: var(--text-2); }
+  .card.selected { border-color: var(--accent); }
+  .card.selected::after {
+    content: '✓'; position: absolute; top: 4px; right: 4px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-text);
+    font-size: 10px; line-height: 16px; text-align: center; font-weight: 700;
+  }
+  .card .thumb {
+    height: 84px; display: flex; align-items: center; justify-content: center;
+    overflow: hidden; border-radius: 6.5px 6.5px 0 0;
+    background:
+      linear-gradient(45deg, rgba(128,128,128,.12) 25%, transparent 25%, transparent 75%, rgba(128,128,128,.12) 75%),
+      linear-gradient(45deg, rgba(128,128,128,.12) 25%, transparent 25%, transparent 75%, rgba(128,128,128,.12) 75%);
+    background-size: 12px 12px; background-position: 0 0, 6px 6px;
+  }
+  .card .thumb img { max-width: 100%; max-height: 100%; pointer-events: none; }
+  /* Says that one card will insert two nodes. */
+  .card .sides-badge {
+    position: absolute; top: 4px; left: 4px; padding: 1px 5px; border-radius: 999px;
+    background: var(--bg-3); color: var(--text-2); font-size: 9px; line-height: 14px;
+  }
+  .card.selected .sides-badge { left: 4px; }
+  .card .thumb.pending::before {
+    content: ''; width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--border); border-top-color: var(--text-2);
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .card .thumb.noimg::before {
+    content: 'no preview'; color: var(--text-2); font-size: 9px; opacity: .7;
+  }
+  .card .label {
+    padding: 5px 6px; display: flex; align-items: flex-start; gap: 4px;
+    border-top: 1px solid var(--border); background: var(--bg);
+    border-radius: 0 0 6.5px 6.5px;
+  }
+  .card .label .names { flex: 1; min-width: 0; }
+  .card .label .set {
+    display: block; color: var(--text-2); font-size: 9px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* Two lines for the name: long asset names stay readable instead of "Aquam…". */
+  .card .label .leaf {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; font-weight: 500; line-height: 1.25; word-break: break-word;
+  }
+  .empty { grid-column: 1 / -1; text-align: center; color: var(--text-2); padding: 32px 8px; }
+
+  .footer {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-top: 1px solid var(--border);
+  }
+  .footer .count { color: var(--text-2); flex: 1; }
+  button.primary {
+    padding: 8px 16px; border: none; border-radius: 6px;
+    background: var(--accent); color: var(--accent-text);
+    font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.primary:disabled { opacity: .4; cursor: default; }
+  button.secondary {
+    padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: transparent; color: var(--text); font: inherit; cursor: pointer;
+    text-align: left;
+  }
+  button.secondary:hover { border-color: var(--text-2); }
+  button.secondary.compact { padding: 6px 9px; }
+  button.secondary:disabled { opacity: .4; cursor: default; }
+
+  .sync { padding: 16px 14px; overflow-y: auto; }
+  .sync h3 { font-size: 12px; margin-bottom: 8px; }
+  .sync p { color: var(--text-2); margin-bottom: 12px; }
+  .sync ol { color: var(--text-2); margin: 0 0 12px 16px; }
+  .sync li { margin-bottom: 4px; }
+  .sync .progress { margin-top: 10px; color: var(--text-2); }
+  .downloads { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .downloads.empty-list { display: none; }
+
+  code { background: var(--bg-3); border-radius: 3px; padding: 1px 4px; font-size: 10px; }
+</style>
+
+<div class="tabs">
+  <div class="tab active" data-panel="search">Search</div>
+  <div class="tab" data-panel="sync">Sync</div>
+</div>
+
+<div class="update empty-list" id="update"></div>
+
+<div class="panel active" id="panel-search">
+  <div class="products" id="products"></div>
+  <div class="searchbar">
+    <input id="query" type="text" placeholder="Asset name… (Monstera, Agate, Basil…)" autofocus />
+    <div class="sides empty-list" id="sides"></div>
+  </div>
+  <div class="cats" id="cats"></div>
+  <div class="status" id="status"></div>
+  <div class="grid" id="grid"><div class="empty">Loading…</div></div>
+  <div class="footer">
+    <div class="count" id="count">Nothing selected</div>
+    <button class="secondary compact" id="select-all" title="Select everything found (⌘A). Escape clears">All</button>
+    <button class="primary" id="insert" disabled>Insert</button>
+  </div>
+</div>
+
+<div class="panel" id="panel-sync">
+  <div class="sync">
+    <h3>Rebuild the asset index</h3>
+    <p>
+      Run the plugin inside the library file and press the button — it collects
+      every component, its key and a preview. Metadata and previews are stored
+      as separate files so the plugin opens instantly.
+    </p>
+    <ol>
+      <li>Publish the library (Assets → Library → Publish) if anything changed</li>
+      <li>Press “Build index”</li>
+      <li>Download <b>asseter-bundle.json</b> — one file instead of all</li>
+      <li>In the terminal: <code>./publish-index.sh --pull &lt;gist_id&gt;</code></li>
+    </ol>
+    <button class="primary" id="build-index">Build index</button>
+    <div class="progress" id="index-progress"></div>
+    <div class="downloads empty-list" id="downloads"></div>
+  </div>
+</div>
+
+<script>
+  // =========================================================================
+  // CONFIG
+  // =========================================================================
+  const CONFIG = {
+    // Public URL of asseter-index.json. Preview shards are looked up next to
+    // it, by the names listed in thumbFiles inside the index itself.
+    // The index itself comes from raw, which serves the branch head without a
+    // CDN cache in front of it; the previews it points to are on jsDelivr,
+    // pinned to a commit (see cdnBase in the file).
+    INDEX_URL: 'https://raw.githubusercontent.com/Asistor1/asseter-index/main/asseter-index.json',
+
+    // This build's version, and where to ask whether a newer one exists. The
+    // plugin cannot replace its own files — the sandbox has neither network nor
+    // disk — so the update is: download the two files, drop them into the
+    // plugin folder, reopen. Figma reads them from disk on every run, so no
+    // re-import is needed.
+    VERSION: '1.4.0',
+    UPDATE_URL: 'https://raw.githubusercontent.com/Asistor1/asseter-index/main/plugin/version.json',
+    // Top level of filtering — products. This order is the tab order.
+    PRODUCTS: ['PlantIn', 'CoinIn', 'RockIn', 'SportDex'],
+
+    // Fallback product detection for assets not yet renamed to
+    // "Product/Kind/Name". Key is the kind, lowercase and singular.
+    PRODUCT_BY_CATEGORY: {
+      plant: 'PlantIn',
+      coin: 'CoinIn',
+      banknote: 'CoinIn',
+      rock: 'RockIn',
+      card: 'SportDex',
+    },
+
+    // Local filters: any number of dimensions per product, each reading its
+    // own level of the name (counted AFTER the product). A small dimension is
+    // rendered as chips, a large one as a dropdown. They combine with AND.
+    //   CoinIn/Coin/DE/Euro/2 Euro/Avers
+    //          1    2  3    4      5
+    // style: 'select' forces a dropdown even for a short dimension — "Type" is
+    // a two-value filter that reads better as one control than as two chips.
+    FILTERS: {
+      CoinIn: [
+        { label: 'Type', level: 1, style: 'select' },
+        { label: 'Country', level: 2 },
+        { label: 'Currency', level: 3 },
+        // Level 4 reads "2 Euro"; the currency already has its own control, so
+        // this one keeps just the amount and sorts numerically.
+        { label: 'Denomination', level: 4, value: 'amount' },
+        // Year and price now live in the name itself:
+        //   CoinIn/Coin/CL/Peso/100 Peso/1952/$1,668/Revers
+        //          1    2  3    4        5    6      7
+        { label: 'Year', level: 5, style: 'select', order: 'desc' },
+        { label: 'Cost', level: 6, value: 'price', style: 'select' },
+      ],
+      RockIn: [
+        { label: 'Color', level: 2, style: 'select' },
+        { label: 'Stone', level: 3, style: 'select' },
+      ],
+      SportDex: [{ label: 'Sport', level: 2 }],
+      '*': [{ label: 'Tag', level: 'auto' }],
+    },
+
+    // Which name level feeds the legacy single-tag filter, per product.
+    // '*' means: deepest level that is still a grouping, never the leaf.
+    TAG_LEVEL: {
+      PlantIn: 1,
+      RockIn: 2,
+      CoinIn: 2,
+      SportDex: 2,
+      '*': 'auto',
+    },
+
+    // How many preview shards to download at once.
+    SHARD_CONCURRENCY: 3,
+
+    // Stay under Figma's clientStorage quota instead of failing writes silently.
+    CACHE_BUDGET: 4 * 1024 * 1024,
+
+    // How many values still render as chips. More than this collapses into a
+    // dropdown: 12 keeps SportDex on chips and moves CoinIn's 35 countries out.
+    MAX_CHIPS: 12,
+
+    // Optional dropdown caption override, keyed by product.
+    TAG_LABEL: {},
+
+    // Rebuilding the index is a maintainer job. The team build sets this to
+    // false: the Sync panel and the tab row above it disappear, leaving search
+    // alone on screen. pack.sh flips it when it makes the team zip.
+    SYNC_TAB: false,
+
+    // The last name segment naming a side. Two components that differ only by
+    // this segment are one asset with two faces, so the grid shows one card
+    // and "Both" inserts the pair. Library spellings and their English names
+    // live side by side so a rename in Figma needs no code release.
+    // What a card shows, per product. `title` is the bold line, `sub` the grey
+    // one above it — both are name levels counted after the product. Without
+    // this a deep name like ".../100 Peso/1952/$1,668" would put the price on
+    // the bold line and hide the denomination.
+    CARD: {
+      CoinIn: { title: 4, sub: [5, 6] },
+      RockIn: { title: 3, sub: [2] },
+    },
+
+    // Price brackets for the Cost filter. Prices keep their own currency, so
+    // the brackets compare magnitude, not converted money.
+    COST_BANDS: [
+      { label: 'under 100', max: 100 },
+      { label: '100 – 1K', max: 1000 },
+      { label: '1K – 10K', max: 10000 },
+      { label: '10K – 100K', max: 100000 },
+      { label: '100K+', max: Infinity },
+    ],
+
+    // A segmented switch beside the search, defined per product. It reads one
+    // name level and offers "everything" plus one button per value.
+    //   group: true  — the values are two faces of one asset (a coin's sides),
+    //                  so the neutral mode shows one card and inserts both.
+    //   group: false — a plain filter: the neutral mode shows every value.
+    // Products without an entry get no switch.
+    TOGGLES: {
+      CoinIn: {
+        label: 'Side', level: 7, group: true, all: 'Both', primary: 'obverse',
+        unit: 'sides',
+        options: [
+          { id: 'obverse', label: 'Obverse', words: ['avers', 'averse', 'obverse', 'аверс'] },
+          { id: 'reverse', label: 'Reverse', words: ['revers', 'reverse', 'реверс'] },
+        ],
+      },
+      RockIn: {
+        label: 'Shape', level: 4, group: true, all: 'All', primary: 'polished',
+        unit: 'shapes',
+        options: [
+          { id: 'raw', label: 'Raw', words: ['raw'] },
+          // Cut stones live under Polished — a separate Faceted group split the
+          // same shelf in two for no benefit.
+          { id: 'polished', label: 'Polished', words: ['polished', 'faceted'] },
+          { id: 'zodiac', label: 'Zodiac', words: ['zodiac'] },
+        ],
+      },
+    },
+
+  };
+  // =========================================================================
+
+  const $ = (id) => document.getElementById(id);
+  const grid = $('grid');
+  const statusEl = $('status');
+  const queryInput = $('query');
+  const insertBtn = $('insert');
+  const countEl = $('count');
+  const selectAllBtn = $('select-all');
+  const catsEl = $('cats');
+  const productsEl = $('products');
+  let lastClickedIndex = -1;
+  let untaggedCount = 0;
+
+  let assets = [];              // {key, name, cat, w, h}
+  const thumbByKey = new Map(); // component key -> dataURL
+  const selected = new Map();   // key -> asset
+  let sourceErrors = [];
+  let thumbsStatus = '';
+  let netStatus = '';
+  let missingThumbs = [];      // shards that never arrived
+  let thumbsDone = false;      // loading finished, spinners must stop
+  let lastIndex = null;        // kept so previews can be retried on demand
+  let indexInfo = null;        // {rev, count, fromCache} of the index on screen
+  let shardBase = '';          // immutable CDN folder the index points previews at
+  let cachedBytes = 0;         // clientStorage is ~5 MB; stop before it throws
+  let assetKeys = new Set();   // every key the current index expects a preview for
+  let thumbStats = { cache: 0, net: 0, stale: 0 };
+  let thumbCoverage = null;    // {covered, total} after a preview pass
+  let thumbErrors = {};        // shard -> why it did not arrive
+  const activeFilters = {};     // dimension -> chosen value (normalised)
+  let toggleMode = '';          // '' = the switch's neutral mode
+  let activeProduct = null;     // null = All, otherwise a CONFIG.PRODUCTS name
+
+  const uid = (a) => a.key;
+
+  // Assets whose name (or any path segment) starts with "_" are retired.
+  const isHidden = (name) => name.split('/').some((s) => s.trim().indexOf('_') === 0);
+
+  const segmentsOf = (name) => name.split(/\s*\/\s*/).map((s) => s.trim()).filter(Boolean);
+
+  // Categories are matched case- and plural-insensitively, so "Banknote" and
+  // "Banknotes" (or "Coin"/"Coins") land in one chip instead of two. The chip
+  // label follows whatever spelling the library actually uses.
+  const catKey = (cat) => String(cat || '').trim().toLowerCase().replace(/s$/, '');
+
+  const PRODUCT_BY_KEY = {};
+  for (const p of CONFIG.PRODUCTS) PRODUCT_BY_KEY[p.toLowerCase()] = p;
+
+  // Two naming schemes are supported at once, so the rename can happen in the
+  // library without a matching code release:
+  //   "PlantIn/Plant/Monstera"  -> product from the first segment
+  //   "Plant/Monstera"          -> product looked up from the category
+  function classify(name, catFromIndex) {
+    const segs = segmentsOf(name);
+    const tagged = segs.length > 1 && PRODUCT_BY_KEY[segs[0].toLowerCase()];
+    const product = tagged
+      || CONFIG.PRODUCT_BY_CATEGORY[catKey(catFromIndex !== undefined && catFromIndex !== null
+        ? catFromIndex
+        : (segs.length > 1 ? segs[0] : ''))]
+      || null;
+
+    // Path below the product — this is what the local filter reads.
+    const rest = tagged ? segs.slice(1) : segs;
+    const configured = CONFIG.TAG_LEVEL[product] !== undefined
+      ? CONFIG.TAG_LEVEL[product]
+      : CONFIG.TAG_LEVEL['*'];
+
+    let cat = '';
+    if (rest.length > 1) {
+      if (configured === 'auto') {
+        // Deepest segment that is still a grouping, never the asset's own name.
+        cat = rest[rest.length - 2];
+      } else {
+        // An explicit level is taken literally, even when it lands on the last
+        // segment: in CoinIn the country sits at level 2 both in
+        // "Coin/DE/Euro" and in "Banknote/DE", so banknotes must group by
+        // country like coins do, not into a "Banknote" bucket of their own.
+        const i = Math.max(0, Number(configured) - 1);
+        cat = i < rest.length ? rest[i] : rest[rest.length - 1];
+      }
+    }
+
+    // Level 1 is the kind (Plant, Coin, Banknote, Rock, Card). Mixing countries
+    // and sports across products would make the All tab unreadable, so All
+    // filters by kind and a product filters by its own configured level.
+    const kind = rest.length > 1 ? rest[0] : '';
+    return { product, cat, kind, rest };
+  }
+
+  // Value of one filter dimension for an asset. '' means the asset has no such
+  // level — it only matches while that dimension is set to "all".
+  // Leading amount of a segment like "2 Euro" or "1/2 Dollar"; '' when the
+  // segment does not start with a number.
+  function amountOf(text) {
+    const m = String(text).trim().match(/^[\d]+([\/.,][\d]+)?/);
+    return m ? m[0] : '';
+  }
+
+  function dimValue(asset, dim) {
+    if (dim.level === 'auto') return asset.cat || '';
+    const i = Number(dim.level) - 1;
+    const rest = asset.rest || [];
+    if (dim.value === 'amount') {
+      const seg = i >= 0 && i < rest.length ? rest[i] : '';
+      return amountOf(seg);
+    }
+    if (dim.value === 'price') {
+      const seg = i >= 0 && i < rest.length ? rest[i] : '';
+      return priceBandOf(seg);
+    }
+    // An explicit level is taken literally, last segment included: for coins
+    // the side ("Avers") IS the final segment, and for banknotes so is the
+    // country. Only the 'auto' mode avoids the leaf.
+    return i >= 0 && i < rest.length ? rest[i] : '';
+  }
+
+  // --- Toggle ---------------------------------------------------------------
+  // "…/5 Peso/Avers" and "…/5 Peso/Revers" are two components but one asset;
+  // "…/Agate/Raw" and "…/Agate/Polished" are two different things. Same
+  // control, different `group` setting.
+  const WORD_TO_ID = {};
+  for (const product of Object.keys(CONFIG.TOGGLES)) {
+    const map = {};
+    for (const opt of CONFIG.TOGGLES[product].options) {
+      for (const w of opt.words) map[w] = opt.id;
+    }
+    WORD_TO_ID[product] = map;
+  }
+
+  const toggleFor = (product) => CONFIG.TOGGLES[product] || null;
+
+  // '' when the asset carries no value for this switch — such an asset shows in
+  // every mode.
+  function toggleValue(asset, cfg) {
+    if (!cfg) return '';
+    const segs = asset.rest && asset.rest.length ? asset.rest : segmentsOf(asset.name);
+    if (segs.length < 2) return '';
+    const i = Number(cfg.level) - 1;
+    const seg = i >= 0 && i < segs.length ? segs[i] : segs[segs.length - 1];
+    const map = WORD_TO_ID[asset.product] || {};
+    return map[String(seg).toLowerCase()] || '';
+  }
+
+  const baseNameOf = (name) => {
+    const segs = segmentsOf(name);
+    segs.pop();
+    return segs.join('/');
+  };
+
+  // Collapses the two faces of one asset into a single card, keeping the
+  // incoming order so search ranking survives. Only grouping switches do this.
+  function groupAssets(list) {
+    const groups = [];
+    const byId = new Map();
+    for (const a of list) {
+      const cfg = toggleFor(a.product);
+      const value = cfg && cfg.group ? toggleValue(a, cfg) : '';
+      if (!value) {
+        groups.push({ id: 'one:' + a.key, name: a.name, assets: [a], primary: a });
+        continue;
+      }
+      const id = 'group:' + baseNameOf(a.name).toLowerCase();
+      let g = byId.get(id);
+      if (!g) {
+        g = { id, name: baseNameOf(a.name), assets: [], primary: null, byValue: {} };
+        byId.set(id, g);
+        groups.push(g);
+      }
+      g.assets.push(a);
+      g.byValue[value] = a;
+      // The obverse is the face people recognise, so it carries the preview.
+      g.primary = g.byValue[cfg.primary] || g.assets[0];
+    }
+    return groups;
+  }
+
+  // Every asset the current product, filters and switch allow.
+  function currentPool() {
+    const pool = poolExcept(null);
+    const cfg = toggleFor(activeProduct);
+    if (!cfg || !toggleMode) return pool;
+    return pool.filter((a) => {
+      const value = toggleValue(a, cfg);
+      return value === '' || value === toggleMode;
+    });
+  }
+
+  // "$1,668" -> "1K – 10K"; a segment with no figure (an unpriced coin) has no
+  // bracket and simply drops out of this filter.
+  function priceBandOf(segment) {
+    const m = String(segment).match(/([$€£¥₣])\s*([\d][\d.,]*)\s*(million|billion|m|bn)?/i);
+    if (!m) return '';
+    let value = Number(m[2].replace(/,/g, ''));
+    if (isNaN(value)) return '';
+    const scale = (m[3] || '').toLowerCase();
+    if (scale === 'million' || scale === 'm') value *= 1e6;
+    else if (scale === 'billion' || scale === 'bn') value *= 1e9;
+    return bandOf(value);
+  }
+
+  const bandOf = (value) => {
+    for (const band of CONFIG.COST_BANDS) if (value < band.max) return band.label;
+    return CONFIG.COST_BANDS[CONFIG.COST_BANDS.length - 1].label;
+  };
+
+  // A dimension can hold several values at once: one component may show coins
+  // of three different years.
+  function dimValues(asset, dim) {
+    if (dim.from === 'years') return (asset.years || []).map(String);
+    if (dim.from === 'cost') {
+      const out = [];
+      for (const c of asset.costs || []) {
+        const band = bandOf(c);
+        if (out.indexOf(band) === -1) out.push(band);
+      }
+      return out;
+    }
+    const v = dimValue(asset, dim);
+    return v ? [v] : [];
+  }
+
+  const dimsFor = (product) =>
+    product === null
+      ? [{ label: 'Kind', level: 1 }]
+      : CONFIG.FILTERS[product] || CONFIG.FILTERS['*'];
+
+  // --- Tabs ---------------------------------------------------------------
+  // With one panel left there is nothing to switch between, so the row goes.
+  if (!CONFIG.SYNC_TAB) {
+    const tabs = document.querySelector('.tabs');
+    const sync = $('panel-sync');
+    if (tabs) tabs.remove();
+    if (sync) sync.remove();
+    $('panel-search').classList.add('active');
+  }
+
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
+      tab.classList.add('active');
+      $('panel-' + tab.dataset.panel).classList.add('active');
+    });
+  });
+
+  // --- clientStorage bridge (cache lives in the sandbox) -------------------
+  let cacheReqId = 0;
+  const cacheWaiters = new Map();
+
+  function cacheGet(key) {
+    return new Promise((resolve) => {
+      const requestId = ++cacheReqId;
+      cacheWaiters.set(requestId, resolve);
+      parent.postMessage({ pluginMessage: { type: 'cache-get', requestId, key } }, '*');
+      setTimeout(() => {
+        if (cacheWaiters.delete(requestId)) resolve(null);
+      }, 15000);
+    });
+  }
+
+  function cacheDelete(key) {
+    parent.postMessage({ pluginMessage: { type: 'cache-delete', key } }, '*');
+  }
+
+  function cacheSet(key, value) {
+    parent.postMessage({ pluginMessage: { type: 'cache-set', key, value } }, '*');
+  }
+
+  // --- Loading the index ---------------------------------------------------
+  function resolveSibling(baseUrl, filename) {
+    const clean = baseUrl.split('?')[0];
+    return clean.slice(0, clean.lastIndexOf('/') + 1) + filename;
+  }
+
+  // Only the meta index is cache-busted. Shard files are immutable for a given
+  // rev (and cached in clientStorage), so re-fetching them past the CDN would
+  // just burn through GitHub's anonymous rate limit and earn a 429.
+  const bust = (url) => url + (url.includes('?') ? '&' : '?') + 'ts=' + Date.now();
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const RETRY_DELAYS = [900, 2500, 6000];
+
+  async function fetchJson(url, label) {
+    let lastError;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        netStatus = '';
+        return await res.json();
+      } catch (e) {
+        lastError = e;
+        const delay = RETRY_DELAYS[attempt];
+        if (delay === undefined) break;
+        const rateLimited = /\b429\b/.test(e.message);
+        netStatus = rateLimited
+          ? ` · GitHub rate limit, retrying in ${Math.round(delay / 1000)}s`
+          : ` · retrying ${label} in ${Math.round(delay / 1000)}s`;
+        renderStatus();
+        await sleep(delay);
+      }
+    }
+    netStatus = '';
+    throw lastError;
+  }
+
+  async function loadIndex() {
+    if (!CONFIG.INDEX_URL) {
+      sourceErrors.push('INDEX_URL is not configured');
+      return;
+    }
+
+    let index;
+    let fromCache = false;
+    try {
+      index = await fetchJson(bust(CONFIG.INDEX_URL), 'index');
+      cacheSet('meta:last', index);
+    } catch (e) {
+      // Rate limit or no network: fall back to the last index we managed to read.
+      index = await cacheGet('meta:last');
+      if (!index || !index.assets) {
+        sourceErrors.push(
+          /\b429\b/.test(e.message)
+            ? 'GitHub rate limit (429). Try again in a minute.'
+            : 'Index failed to load: ' + e.message
+        );
+        return;
+      }
+      fromCache = true;
+      sourceErrors.push(
+        /\b429\b/.test(e.message)
+          ? 'GitHub rate limit — showing the cached index'
+          : 'Network unavailable — showing the cached index'
+      );
+    }
+    // Which build is on screen. Without this, an index that quietly failed to
+    // refresh looks exactly like a fresh one.
+    // Previews live at a commit-pinned CDN path, so an edge node can never
+    // answer with an older build's shards.
+    shardBase = typeof index.cdnBase === 'string' ? index.cdnBase : '';
+    indexInfo = {
+      rev: index.rev || index.generatedAt || '',
+      count: (index.assets || []).length,
+      fromCache,
+    };
+
+    // Retired assets are dropped here too, so an index built before the
+    // underscore rule existed still hides them.
+    assets = (index.assets || [])
+      .filter((a) => !isHidden(a.name))
+      .map((a) => {
+        const { product, cat, kind, rest } = classify(a.name, a.cat);
+        return {
+          key: a.key, name: a.name, cat, kind, rest, product, w: a.w, h: a.h,
+          years: Array.isArray(a.y) ? a.y : [],
+          costs: Array.isArray(a.c) ? a.c : [],
+        };
+      });
+
+    // v1 indexes embedded thumbnails inline — still supported.
+    for (const a of index.assets || []) {
+      if (a.thumb) thumbByKey.set(a.key, 'data:image/png;base64,' + a.thumb);
+    }
+
+    lastIndex = index;
+    assetKeys = new Set(assets.map((a) => a.key));
+
+    // Cards render now; thumbnails stream in behind them.
+    renderProducts();
+    renderSides();
+    renderCats();
+    render();
+    void loadThumbs(index);
+  }
+
+  // Share of a shard's previews the current index still asks for. Shards are
+  // built together with the index, so a healthy one is ~1. An older build
+  // scores low: components re-split in Figma get new keys. Checking for "at
+  // least one match" was not enough — an old shard usually keeps a few
+  // untouched assets and passed while leaving the other 25 cards blank.
+  const SHARD_MIN_MATCH = 0.9;
+
+  function shardMatch(shard) {
+    if (!shard || !shard.thumbs) return 0;
+    if (assetKeys.size === 0) return 1;
+    let total = 0;
+    let hit = 0;
+    for (const key in shard.thumbs) {
+      total += 1;
+      if (assetKeys.has(key)) hit += 1;
+    }
+    return total === 0 ? 0 : hit / total;
+  }
+
+  const shardIsUseful = (shard) => shardMatch(shard) >= SHARD_MIN_MATCH;
+
+  async function loadShard(filename, rev, force) {
+    const cacheKey = 'thumbs:' + rev + ':' + filename;
+    let shard = force ? null : await cacheGet(cacheKey);
+    if (shard && shard.thumbs && !shardIsUseful(shard)) {
+      // Leaving it in place would poison every future open: the cache budget
+      // can stop the fresh copy from overwriting it.
+      cacheDelete(cacheKey);
+      thumbStats.stale += 1;
+      shard = null;
+    }
+    if (shard && shard.thumbs) {
+      thumbStats.cache += 1;
+    } else {
+      const url = shardBase ? shardBase + filename : resolveSibling(CONFIG.INDEX_URL, filename);
+      // Shard filenames repeat between builds, so a plain URL can be answered
+      // from an HTTP cache with the previous build's previews — whose keys no
+      // longer exist. Pinning the URL to the index revision makes every build
+      // a new URL while staying cacheable within one build.
+      // A pinned URL is already unique per build and needs no extra parameter.
+      const revUrl = shardBase
+        ? url
+        : url + (url.indexOf('?') === -1 ? '?' : '&') + 'rev=' + encodeURIComponent(rev);
+      shard = await fetchJson(force ? bust(url) : revUrl, filename);
+      thumbStats.net += 1;
+      // Belt and braces: if something still answers with an older build, go
+      // around every cache once before giving up — no user action needed.
+      if (!shardIsUseful(shard)) {
+        thumbStats.stale += 1;
+        shard = await fetchJson(bust(url), filename);
+      }
+      if (!shardIsUseful(shard)) throw new Error('served an older build of the library');
+      if (cachedBytes < CONFIG.CACHE_BUDGET) {
+        cacheSet(cacheKey, shard);
+        cachedBytes += JSON.stringify(shard).length;
+      }
+    }
+    for (const key in shard.thumbs) {
+      thumbByKey.set(key, 'data:image/png;base64,' + shard.thumbs[key]);
+    }
+  }
+
+  async function loadThumbs(index, only, force) {
+    const files = only && only.length ? only : (index.thumbFiles || []);
+    if (files.length === 0) return;
+    thumbStats = { cache: 0, net: 0, stale: 0 };
+    thumbErrors = {};
+    // A retry is loading again, so cards rendered meanwhile must spin, not
+    // claim "no preview".
+    thumbsDone = false;
+
+    const rev = index.rev || index.generatedAt || 'norev';
+    parent.postMessage({ pluginMessage: { type: 'cache-prune', keepPrefix: 'thumbs:' + rev } }, '*');
+
+    let loaded = 0;
+    const total = files.length;
+    let pending = files.slice();
+
+    // Two passes: a shard that lost a race with the CDN gets one more chance
+    // before its assets are marked as having no preview.
+    for (let attempt = 0; attempt < 2 && pending.length > 0; attempt++) {
+      if (attempt > 0) {
+        thumbsStatus = ` · retrying previews (${pending.length})`;
+        renderStatus();
+        await sleep(1500);
+      }
+      const failed = [];
+      // Limited concurrency: firing 15 one-megabyte requests at once is what
+      // made shards drop out and left cards spinning forever.
+      const queue = pending.slice();
+      const workers = Array.from({ length: Math.min(CONFIG.SHARD_CONCURRENCY, queue.length) }, async () => {
+        while (queue.length > 0) {
+          const filename = queue.shift();
+          try {
+            await loadShard(filename, rev, force);
+            loaded += 1;
+            thumbsStatus = loaded < total ? ` · previews ${loaded}/${total}` : '';
+            applyThumbs();
+            renderStatus();
+          } catch (e) {
+            failed.push(filename);
+            thumbErrors[filename] = (e && e.message) || String(e);
+          }
+        }
+      });
+      await Promise.all(workers);
+      pending = failed;
+    }
+
+    thumbsStatus = '';
+    missingThumbs = pending.slice();
+    // Coverage is what the user actually sees; shard counts explain why.
+    let covered = 0;
+    for (const key of assetKeys) if (thumbByKey.has(key)) covered += 1;
+
+    // Every shard reported success yet previews are missing: something between
+    // here and the CDN answered with another build. Redownload once, past all
+    // caches, instead of leaving the user to press a link. Nothing is reported
+    // while that is under way — a gap the plugin is about to close on its own
+    // is not the user's problem.
+    if (!force && !only && covered < assetKeys.size && missingThumbs.length === 0) {
+      thumbCoverage = null;
+      thumbsStatus = ' · refreshing previews';
+      renderStatus();
+      await loadThumbs(index, null, true);
+      return;
+    }
+
+    thumbCoverage = { covered, total: assetKeys.size };
+    applyThumbs();
+    // Whatever never arrived must stop pretending to load.
+    settlePendingThumbs();
+    renderStatus();
+  }
+
+  async function loadAll() {
+    void checkForUpdate();
+    await loadIndex();
+    renderProducts();
+    renderSides();
+    renderCats();
+    render();
+  }
+
+  // --- Rendering ----------------------------------------------------------
+  // Everything the current product contains — the pool the category chips
+  // describe, and what "All" falls back to.
+  function productPool() {
+    return activeProduct === null ? assets : assets.filter((a) => a.product === activeProduct);
+  }
+
+  // Assets matching every active dimension except the one named — that is what
+  // each control must count, so its own options stay reachable.
+  function poolExcept(skipLabel) {
+    const dims = dimsFor(activeProduct);
+    return productPool().filter((a) =>
+      dims.every((d) => {
+        if (d.label === skipLabel) return true;
+        const picked = activeFilters[d.label];
+        return !picked || dimValues(a, d).some((v) => catKey(v) === picked);
+      })
+    );
+  }
+
+  // Cards, not components: a two-sided coin is one entry here.
+  function currentResults() {
+    const q = queryInput.value.trim().toLowerCase();
+    const pool = currentPool();
+    if (!q) return groupAssets(pool);
+    const starts = [];
+    const contains = [];
+    for (const a of pool) {
+      const n = a.name.toLowerCase();
+      if (n.startsWith(q)) starts.push(a);
+      else if (n.includes(q)) contains.push(a);
+    }
+    return groupAssets(starts.concat(contains));
+  }
+
+  // How many components the current selection would actually insert.
+  const selectedItems = () => {
+    const items = [];
+    for (const g of selected.values()) for (const a of g.assets) items.push({ key: a.key, name: a.name });
+    return items;
+  };
+
+  // Top level: one tab per product. Counts come from the data, so a product
+  // with no assets yet is shown but disabled.
+  function renderProducts() {
+    const counts = new Map();
+    for (const a of assets) {
+      if (!a.product) continue;
+      counts.set(a.product, (counts.get(a.product) || 0) + 1);
+    }
+    const untagged = assets.filter((a) => !a.product).length;
+
+    const list = [{ product: null, label: 'All', n: assets.length }].concat(
+      CONFIG.PRODUCTS.map((p) => ({ product: p, label: p, n: counts.get(p) || 0 }))
+    );
+
+    productsEl.innerHTML = '';
+    for (const item of list) {
+      const btn = document.createElement('button');
+      btn.className = 'ptab' + (activeProduct === item.product ? ' active' : '');
+      btn.disabled = item.n === 0 && item.product !== null;
+      btn.innerHTML = `${escape(item.label)}<span class="n">${item.n}</span>`;
+      btn.addEventListener('click', () => {
+        if (activeProduct === item.product) return;
+        activeProduct = item.product;
+        // Dimensions differ between products, so local filters start over.
+        for (const k of Object.keys(activeFilters)) delete activeFilters[k];
+        selected.clear();
+        lastClickedIndex = -1;
+        renderProducts();
+        renderSides();
+        renderCats();
+        render();
+      });
+      productsEl.appendChild(btn);
+    }
+
+    // Anything the product mapping does not cover would silently vanish from
+    // every tab except All, so say it out loud.
+    untaggedCount = untagged;
+  }
+
+  // Side switch: hidden entirely for products whose assets have no sides.
+  function renderSides() {
+    const sidesEl = $('sides');
+    const cfg = toggleFor(activeProduct);
+    const present = cfg
+      ? new Set(productPool().map((a) => toggleValue(a, cfg)).filter(Boolean))
+      : new Set();
+    if (!cfg || present.size === 0) {
+      toggleMode = '';
+      sidesEl.classList.add('empty-list');
+      sidesEl.innerHTML = '';
+      return;
+    }
+    sidesEl.classList.remove('empty-list');
+
+    // Only values the library actually has get a button.
+    const modes = [{ id: '', label: cfg.all }].concat(
+      cfg.options.filter((o) => present.has(o.id)).map((o) => ({ id: o.id, label: o.label }))
+    );
+    if (modes.every((m) => m.id !== toggleMode)) toggleMode = '';
+
+    sidesEl.innerHTML = '';
+    for (const m of modes) {
+      const btn = document.createElement('button');
+      btn.className = toggleMode === m.id ? 'active' : '';
+      btn.textContent = m.label;
+      btn.title = m.id === ''
+        ? (cfg.group
+          ? `One card per asset — inserting adds every ${(cfg.unit || 'variant').replace(/s$/, '')}`
+          : `Every ${cfg.label.toLowerCase()}`)
+        : `${cfg.label}: ${m.label.toLowerCase()} only`;
+      btn.addEventListener('click', () => {
+        if (toggleMode === m.id) return;
+        toggleMode = m.id;
+        // Card identity changes with the mode, so a stale selection would
+        // insert the wrong thing.
+        selected.clear();
+        lastClickedIndex = -1;
+        renderSides();
+        render();
+      });
+      sidesEl.appendChild(btn);
+    }
+  }
+
+  // Local filters: one control per configured dimension, combined with AND.
+  function renderCats() {
+    const dims = dimsFor(activeProduct);
+
+    // Drop selections that make no sense for the product now shown.
+    for (const label of Object.keys(activeFilters)) {
+      if (!dims.some((d) => d.label === label)) delete activeFilters[label];
+    }
+
+    catsEl.innerHTML = '';
+    let rendered = 0;
+
+    for (const dim of dims) {
+      const pool = poolExcept(dim.label);
+      const groups = new Map();
+      for (const a of pool) {
+        for (const v of dimValues(a, dim)) {
+          const k = catKey(v);
+          if (!groups.has(k)) groups.set(k, { n: 0, labels: {} });
+          const g = groups.get(k);
+          g.n += 1;
+          g.labels[v] = (g.labels[v] || 0) + 1;
+        }
+      }
+
+      const labelFor = (k) => {
+        const g = groups.get(k);
+        if (!g) return k;
+        return Object.keys(g.labels).sort((a, b) => g.labels[b] - g.labels[a])[0] || k;
+      };
+
+      const bandOrder = CONFIG.COST_BANDS.map((b) => catKey(b.label));
+      const values = [...groups.keys()].sort((a, b) => {
+        if (dim.from === 'cost' || dim.value === 'price') {
+          return bandOrder.indexOf(a) - bandOrder.indexOf(b);
+        }
+        const na = parseFloat(labelFor(a)), nb = parseFloat(labelFor(b));
+        // Years and denominations sort as numbers, everything else by label.
+        if (!isNaN(na) && !isNaN(nb) && na !== nb) {
+          return dim.order === 'desc' ? nb - na : na - nb;
+        }
+        return labelFor(a).localeCompare(labelFor(b));
+      });
+      // A dimension with a single value cannot narrow anything down.
+      if (values.length < 2) {
+        if (activeFilters[dim.label]) delete activeFilters[dim.label];
+        continue;
+      }
+      rendered += 1;
+
+      // Chips or dropdown is decided by the dimension's full size inside the
+      // product, not by what the other filters currently leave. Otherwise
+      // picking "Banknote" would explode 35 countries into 11 chips and the
+      // control would jump around under the cursor.
+      const allValues = new Set();
+      for (const a of productPool()) {
+        for (const v of dimValues(a, dim)) allValues.add(catKey(v));
+      }
+      const asDropdown = dim.style === 'select' || allValues.size > CONFIG.MAX_CHIPS;
+
+      const picked = activeFilters[dim.label] || null;
+      const apply = (v) => {
+        if (v) activeFilters[dim.label] = v;
+        else delete activeFilters[dim.label];
+        lastClickedIndex = -1;
+        renderCats();
+        render();
+      };
+
+      if (asDropdown) {
+        const sel = document.createElement('select');
+        sel.className = 'chip-select' + (picked ? ' filtered' : '');
+        const head = document.createElement('option');
+        head.value = '__all__';
+        head.textContent = `${dim.label} (${values.length})`;
+        sel.appendChild(head);
+        for (const k of values) {
+          const opt = document.createElement('option');
+          opt.value = k;
+          opt.textContent = `${labelFor(k)} (${groups.get(k).n})`;
+          opt.selected = k === picked;
+          sel.appendChild(opt);
+        }
+        sel.addEventListener('change', () => apply(sel.value === '__all__' ? null : sel.value));
+        catsEl.appendChild(sel);
+      } else {
+        for (const k of values) {
+          const btn = document.createElement('button');
+          btn.className = 'chip' + (k === picked ? ' active' : '');
+          btn.innerHTML = `${escape(labelFor(k))}<span class="n">${groups.get(k).n}</span>`;
+          btn.addEventListener('click', () => apply(k === picked ? null : k));
+          catsEl.appendChild(btn);
+        }
+      }
+    }
+
+    if (Object.keys(activeFilters).length > 0) {
+      const reset = document.createElement('button');
+      reset.className = 'chip reset';
+      reset.textContent = 'Clear';
+      reset.addEventListener('click', () => {
+        for (const k of Object.keys(activeFilters)) delete activeFilters[k];
+        lastClickedIndex = -1;
+        renderCats();
+        render();
+      });
+      catsEl.appendChild(reset);
+    }
+
+    catsEl.classList.toggle('empty-list', rendered === 0);
+  }
+
+  function thumbFor(asset) {
+    return thumbByKey.get(asset.key);
+  }
+
+  const escape = (s) =>
+    String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  // Splits on "/" with or without surrounding spaces, so both Figma naming
+  // styles work: "Rock/Agate" and "Zodiac / Sign=Aquarius".
+  //   "Rock/Agate"                      -> { set: 'Rock',     leaf: 'Agate' }
+  //   "Zodiac / Sign=Aquarius"          -> { set: 'Zodiac',   leaf: 'Aquarius' }
+  //   "Plant/Indoor/Tropical/Ficus"     -> { set: 'Tropical', leaf: 'Ficus' }
+  // Only the nearest parent goes on the card; the full path is in the tooltip.
+  function splitName(name) {
+    const parts = name.split(/\s*\/\s*/).filter((p) => p !== '');
+    let leaf = parts.pop() || name;
+    const eq = leaf.indexOf('=');
+    if (eq !== -1) leaf = leaf.slice(eq + 1);
+    return { set: parts.length ? parts[parts.length - 1] : '', leaf };
+  }
+
+  function renderStatus() {
+    const scoped = productPool().length;
+    let stamp = '';
+    if (indexInfo && indexInfo.rev) {
+      const d = new Date(indexInfo.rev);
+      stamp = isNaN(d.getTime())
+        ? ' · index ' + indexInfo.rev
+        : ' · index ' + d.toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      if (indexInfo.fromCache) stamp += ' (cached)';
+    }
+    const counts =
+      (activeProduct === null
+        ? `Assets: ${assets.length}`
+        : `${activeProduct}: ${scoped} of ${assets.length}`) + stamp + thumbsStatus + netStatus;
+    const notes = sourceErrors.slice();
+    if (missingThumbs.length > 0) {
+      notes.push(
+        'previews unavailable: ' +
+        missingThumbs
+          .map((f) => (thumbErrors[f] ? `${f} (${thumbErrors[f]})` : f))
+          .join(', ')
+      );
+    }
+    const gap = thumbCoverage && thumbCoverage.total > 0
+      && thumbCoverage.covered < thumbCoverage.total;
+    if (gap && missingThumbs.length === 0) {
+      notes.push(
+        `previews: ${thumbCoverage.covered} of ${thumbCoverage.total}` +
+        ` (shards — cache ${thumbStats.cache}, network ${thumbStats.net}` +
+        (thumbStats.stale > 0 ? `, stale ${thumbStats.stale}` : '') + ')'
+      );
+    }
+    if (untaggedCount > 0) {
+      notes.push(`${untaggedCount} assets without a product — visible only under All`);
+    }
+    let warns = notes.map((e) => `<span class="warn">⚠ ${escape(e)}</span>`).join('<br>');
+    // The retry control is markup, so it must sit outside the escaped notes.
+    if (missingThumbs.length > 0) warns += ' <a href="#" id="retry-thumbs">retry</a>';
+    // Redownloading everything is the one cure for a cache that answers with
+    // previews belonging to an older build of the library.
+    if (gap) warns += ' <a href="#" id="reload-thumbs">reload previews</a>';
+    statusEl.innerHTML = warns ? counts + '<br>' + warns : counts;
+    const retry = document.getElementById('retry-thumbs');
+    if (retry) {
+      retry.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (lastIndex) void loadThumbs(lastIndex, missingThumbs.slice(), true);
+      });
+    }
+    const reload = document.getElementById('reload-thumbs');
+    if (reload) {
+      reload.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (lastIndex) void loadThumbs(lastIndex, null, true);
+      });
+    }
+  }
+
+  // Fills in thumbnails for already-rendered cards without rebuilding the grid,
+  // so selection and scroll position survive.
+  // Once loading is over, a card without a preview must show a placeholder
+  // instead of spinning forever.
+  function settlePendingThumbs() {
+    thumbsDone = true;
+    grid.querySelectorAll('.card .thumb.pending').forEach((holder) => {
+      holder.classList.remove('pending');
+      holder.classList.add('noimg');
+    });
+  }
+
+  function applyThumbs() {
+    grid.querySelectorAll('.card').forEach((card) => {
+      const holder = card.querySelector('.thumb');
+      // Also heal cards already marked "no preview": a retry may have brought
+      // their shard in after all.
+      if (!holder.classList.contains('pending') && !holder.classList.contains('noimg')) return;
+      const src = thumbByKey.get(card.dataset.key);
+      if (!src) return;
+      holder.classList.remove('pending', 'noimg');
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '';
+      holder.appendChild(img);
+    });
+  }
+
+  function render() {
+    const results = currentResults();
+    grid.innerHTML = '';
+    renderStatus();
+
+    if (results.length === 0) {
+      grid.innerHTML = `<div class="empty">${
+        assets.length === 0 ? 'Index is empty or failed to load' : 'Nothing found'
+      }</div>`;
+      updateFooter();
+      return;
+    }
+
+    for (const group of results) {
+      const asset = group.primary;
+      const id = group.id;
+      const src = thumbFor(asset);
+      const pair = group.assets.length > 1;
+      // "2 sides" for a coin, "3 shapes" for a stone.
+      const unitCfg = toggleFor(asset.product);
+      const badge = pair
+        ? `${group.assets.length} ${(unitCfg && unitCfg.unit) || 'items'}`
+        : '';
+
+      const card = document.createElement('div');
+      card.className = 'card' + (selected.has(id) ? ' selected' : '');
+      card.draggable = true;
+      card.dataset.uid = id;
+      card.dataset.key = asset.key;
+
+      const parts = cardText(group, asset);
+      // Inside a category the prefix is the same on every card — drop it.
+      const active = Object.values(activeFilters);
+      const showSet = parts.set && active.indexOf(catKey(parts.set)) === -1;
+      card.innerHTML = `
+        <div class="thumb${src ? '' : (thumbsDone ? ' noimg' : ' pending')}">${src ? `<img src="${escape(src)}" loading="lazy" alt="">` : ''}</div>
+        ${pair ? `<span class="sides-badge">${escape(badge)}</span>` : ''}
+        <div class="label" title="${escape(pair ? group.name + ' (' + badge + ')' : group.name)}">
+          <span class="names">
+            ${showSet ? `<span class="set">${escape(parts.set)}</span>` : ''}
+            <span class="leaf">${escape(parts.leaf)}</span>
+          </span>
+        </div>`;
+
+      const index = results.indexOf(group);
+      card.addEventListener('click', (e) => {
+        if (e.shiftKey && lastClickedIndex !== -1) {
+          // Shift+click selects the whole range from the previous click.
+          const [from, to] = [lastClickedIndex, index].sort((a, b) => a - b);
+          for (let i = from; i <= to; i++) selected.set(results[i].id, results[i]);
+          markSelection();
+        } else {
+          if (selected.has(id)) selected.delete(id);
+          else selected.set(id, group);
+          card.classList.toggle('selected', selected.has(id));
+        }
+        lastClickedIndex = index;
+        updateFooter();
+      });
+
+      card.addEventListener('dragend', (e) => {
+        // Both sides travel in one drop, laid out as a grid by the sandbox.
+        const payload = { items: group.assets.map((a) => ({ key: a.key, name: a.name })) };
+        window.parent.postMessage(
+          {
+            pluginDrop: {
+              clientX: e.clientX,
+              clientY: e.clientY,
+              items: [{ type: 'application/x-asseter', data: JSON.stringify(payload) }],
+            },
+          },
+          '*'
+        );
+      });
+
+      grid.appendChild(card);
+    }
+    updateFooter();
+  }
+
+  // Bold line and the grey line above it for one card.
+  function cardText(group, asset) {
+    const cfg = CONFIG.CARD[asset.product];
+    const rest = asset.rest || [];
+    if (cfg) {
+      const at = (level) => {
+        const i = Number(level) - 1;
+        return i >= 0 && i < rest.length ? rest[i] : '';
+      };
+      const leaf = at(cfg.title);
+      const sub = (cfg.sub || []).map(at).filter(Boolean).join(' · ');
+      if (leaf) return { set: sub, leaf };
+    }
+    return splitName(group.name);
+  }
+
+  // Repaints the selected class in place, keeping scroll position.
+  function markSelection() {
+    grid.querySelectorAll('.card').forEach((card) => {
+      card.classList.toggle('selected', selected.has(card.dataset.uid));
+    });
+  }
+
+  function updateFooter() {
+    const n = selected.size;
+    const items = selectedItems().length;
+    const total = currentResults().length;
+
+    if (total === 0) {
+      // Selection can outlive the filter that produced it.
+      countEl.textContent = n === 0 ? 'Nothing found' : `Nothing found · selected: ${n}`;
+    } else {
+      countEl.textContent = n === 0 ? `Found: ${total}` : `Selected: ${n} of ${total}`;
+    }
+
+    insertBtn.disabled = n === 0;
+    insertBtn.textContent = items > 1 ? `Insert ${items}` : 'Insert';
+    selectAllBtn.disabled = total === 0 && n === 0;
+    selectAllBtn.textContent = n > 0 ? 'Clear' : 'All';
+  }
+
+  selectAllBtn.addEventListener('click', () => {
+    if (selected.size > 0) {
+      selected.clear();
+    } else {
+      for (const g of currentResults()) selected.set(g.id, g);
+    }
+    lastClickedIndex = -1;
+    markSelection();
+    updateFooter();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    // The search field is focused almost always, so ⌘A is claimed for
+    // "select all assets" rather than "select the query text".
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')) {
+      e.preventDefault();
+      for (const g of currentResults()) selected.set(g.id, g);
+      markSelection();
+      updateFooter();
+    }
+    if (e.key === 'Escape' && selected.size > 0) {
+      selected.clear();
+      lastClickedIndex = -1;
+      markSelection();
+      updateFooter();
+    }
+  });
+
+  let debounceTimer;
+  queryInput.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(render, 120);
+  });
+
+  // --- Insert -------------------------------------------------------------
+  insertBtn.addEventListener('click', () => {
+    const picked = selectedItems();
+    if (picked.length === 0) return;
+
+    insertBtn.disabled = true;
+    // One message for the whole batch, so the sandbox lays it out as one grid.
+    parent.postMessage(
+      {
+        pluginMessage: {
+          type: 'insert-batch',
+          items: picked,
+        },
+      },
+      '*'
+    );
+
+    selected.clear();
+    lastClickedIndex = -1;
+    render();
+  });
+
+  // --- Sync tab -----------------------------------------------------------
+  // The team build has no Sync panel, so everything here must tolerate its
+  // absence rather than throw on a missing element.
+  const syncEl = (id) => (CONFIG.SYNC_TAB ? $(id) : null);
+  const setProgress = (text) => {
+    const el = syncEl('index-progress');
+    if (el) el.textContent = text;
+  };
+
+  if (CONFIG.SYNC_TAB) {
+    $('build-index').addEventListener('click', () => {
+      setProgress('Indexing…');
+      $('downloads').innerHTML = '';
+      $('downloads').classList.add('empty-list');
+      parent.postMessage({ pluginMessage: { type: 'build-index' } }, '*');
+    });
+  }
+
+  // --- Update check --------------------------------------------------------
+  // "1.10.0" is newer than "1.9.3", so compare number by number.
+  function isNewer(remote, local) {
+    const a = String(remote).split('.').map(Number);
+    const b = String(local).split('.').map(Number);
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      const x = a[i] || 0, y = b[i] || 0;
+      if (x !== y) return x > y;
+    }
+    return false;
+  }
+
+  async function downloadFile(url, filename) {
+    const res = await fetch(bust(url));
+    if (!res.ok) throw new Error(filename + ': HTTP ' + res.status);
+    const text = await res.text();
+    const blob = new Blob([text], { type: 'text/plain' });
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = href;
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(href), 2000);
+  }
+
+  async function checkForUpdate() {
+    if (!CONFIG.UPDATE_URL) return;
+    let info;
+    try {
+      info = await (await fetch(bust(CONFIG.UPDATE_URL))).json();
+    } catch (e) {
+      return; // Offline or rate limited: an update notice is not worth an error.
+    }
+    if (!info || !info.version || !isNewer(info.version, CONFIG.VERSION)) return;
+
+    const bar = $('update');
+    bar.classList.remove('empty-list');
+    bar.innerHTML = `
+      <span class="what">
+        <b>Update available: ${escape(info.version)}</b>
+        ${info.notes ? `<span class="note"> — ${escape(info.notes)}</span>` : ''}
+      </span>
+      <button class="primary compact" id="update-get">Download</button>
+      <button class="later" id="update-later">Later</button>`;
+
+    $('update-later').addEventListener('click', () => bar.classList.add('empty-list'));
+    $('update-get').addEventListener('click', async () => {
+      const btn = $('update-get');
+      btn.disabled = true;
+      btn.textContent = 'Downloading…';
+      const files = info.files || {};
+      const failed = [];
+      for (const name of Object.keys(files)) {
+        try {
+          await downloadFile(files[name], name);
+          // Browsers drop downloads fired back to back without a breath.
+          await sleep(400);
+        } catch (e) {
+          failed.push(name);
+        }
+      }
+      btn.disabled = false;
+      btn.textContent = 'Download';
+      bar.querySelector('.what').innerHTML = failed.length
+        ? `<b>Could not download: ${escape(failed.join(', '))}</b>`
+        : '<b>Downloaded.</b> <span class="note">Replace the files in the plugin folder, then reopen the plugin — no re-import needed.</span>';
+    });
+  }
+
+  function downloadJson(obj, filename) {
+    const blob = new Blob([JSON.stringify(obj)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function addDownloadButton(filename, data, primary) {
+    const btn = document.createElement('button');
+    btn.className = primary ? 'primary' : 'secondary';
+    const kb = Math.round(JSON.stringify(data).length / 1024);
+    btn.textContent = `↓ ${filename} (${kb} KB)`;
+    btn.addEventListener('click', () => {
+      downloadJson(data, filename);
+      btn.textContent = `✓ ${filename} (${kb} KB)`;
+    });
+    $('downloads').appendChild(btn);
+    $('downloads').classList.remove('empty-list');
+  }
+
+  // One file instead of N: browsers throttle multiple programmatic downloads,
+  // so the meta index and every thumbnail shard travel as a single bundle that
+  // publish-index.sh splits back apart.
+  function addBundleButton(meta, shards) {
+    const bundle = {
+      v: 1,
+      kind: 'asseter-bundle',
+      rev: meta.data.rev,
+      files: [{ filename: meta.filename, data: meta.data }].concat(
+        shards.map((s) => ({ filename: s.filename, data: s.data }))
+      ),
+    };
+    addDownloadButton('asseter-bundle.json', bundle, true);
+
+    const hint = document.createElement('div');
+    hint.className = 'progress';
+    hint.textContent = 'One file. Next: ./publish-index.sh --pull <gist_id>. The same data separately below, if needed.';
+    $('downloads').appendChild(hint);
+  }
+
+  // --- Messages from sandbox ----------------------------------------------
+  window.onmessage = async (event) => {
+    const msg = event.data.pluginMessage;
+    if (!msg) return;
+
+    switch (msg.type) {
+      case 'cache-value': {
+        const resolve = cacheWaiters.get(msg.requestId);
+        if (resolve) {
+          cacheWaiters.delete(msg.requestId);
+          resolve(msg.value);
+        }
+        break;
+      }
+
+      case 'index-progress':
+        setProgress(`Indexing: ${msg.done}/${msg.total}`);
+        break;
+
+      case 'index-built': {
+        if (!CONFIG.SYNC_TAB) break;
+        setProgress(
+          `Done: ${msg.meta.data.assets.length} assets` +
+          (msg.hidden ? `, ${msg.hidden} hidden (name starts with “_”)` : '') +
+          (msg.failed ? `, ${msg.failed} failed` : '')
+        );
+        addBundleButton(msg.meta, msg.shards);
+        addDownloadButton(msg.meta.filename, msg.meta.data);
+        for (const shard of msg.shards) addDownloadButton(shard.filename, shard.data);
+        break;
+      }
+
+      case 'index-error':
+        setProgress(msg.message);
+        break;
+
+      case 'insert-done':
+        updateFooter();
+        break;
+
+    }
+  };
+
+  loadAll();
+</script>

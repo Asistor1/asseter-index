@@ -1,0 +1,20 @@
+{
+  "name": "Asseter",
+  "id": "1666936404805801132",
+  "api": "1.0.0",
+  "main": "code.js",
+  "capabilities": [],
+  "documentAccess": "dynamic-page",
+  "editorType": [
+    "figma"
+  ],
+  "ui": "ui.html",
+  "networkAccess": {
+    "allowedDomains": [
+      "https://cdn.jsdelivr.net",
+      "https://raw.githubusercontent.com",
+      "https://gist.githubusercontent.com"
+    ],
+    "reasoning": "Downloads a JSON index of the team's published components — names, component keys and small preview images — so assets can be searched by name and inserted. No data is sent anywhere."
+  }
+}
